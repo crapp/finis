@@ -1,6 +1,6 @@
 /*
  * A finite state machine implementation in C
- * Copyright © 2016 Chriistian Rapp
+ * Copyright © 2016 Christian Rapp
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -14,10 +14,10 @@
  * names of its contributors may be used to endorse or promote products
  * derived from this software without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY yourname ''AS IS'' AND ANY
+ * THIS SOFTWARE IS PROVIDED BY CHRISTIAN RAPP ''AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL yourname BE LIABLE FOR ANY
+ * DISCLAIMED. IN NO EVENT SHALL CHRISTIAN RAPP BE LIABLE FOR ANY
  * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
  * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
@@ -34,7 +34,7 @@
 #include <avr/interrupt.h>
 #include <avr/io.h>
 #include <inttypes.h>
-#include <util/delay.h>
+#include <util/delay.h> /* no timers here, using simple delays */
 
 typedef enum LIGHT_STATES {
     GREEN,
@@ -46,18 +46,37 @@ typedef enum LIGHT_STATES {
 } sts_type;
 typedef enum AVR_PORT { PB, PD } avrp_type;
 
+/**
+ * @brief Read LDR and use the value for the state machine
+ *
+ * @return 0 -> GREEN, 1 -> RED, 2 -> YELLOW
+ */
 uint8_t read_sensor(void);
+/**
+ * @brief Activate LED according to current state
+ *
+ * @param reg s_type#reg
+ * @param led s_type#output_pin
+ */
 void state_led(avrp_type reg, uint8_t led);
 
+/**
+ * @brief Struct representing one state
+ */
 typedef struct {
-    uint8_t output_pin;
-    uint8_t reg;
-    void (*output)(avrp_type, uint8_t);
-    long counter;
-    sts_type next[3];
+    uint8_t output_pin;                 /**< Which pin to use for this state */
+    uint8_t reg;                        /**< which pin register */
+    void (*output)(avrp_type, uint8_t); /**< Function this state will call to set
+                                          the output */
+    long counter;                       /**< guaranteed time for this state */
+    sts_type next[3];                   /**< array of next states */
 } s_type;
 
 /* clang-format off */
+
+/**
+ * @brief State transition table
+ */
 s_type FSM[6] = {
     {PD5, PD, &state_led, 100, {GREEN, TO_RED, TO_YELLOW}},
     {PD6, PD, &state_led, 100, {TO_GREEN, RED, TO_YELLOW}},
@@ -68,14 +87,22 @@ s_type FSM[6] = {
 };
 /* clang-format on */
 
+/**
+ * @brief Current state
+ */
 s_type current_state;
+/**
+ * @brief Current counter
+ */
 long cnt;
 
 int main(void)
 {
+    /* deactivate all the pins we need */
     PORTB &= ~(1 << PB0);
     PORTD &= ~((1 << PD5) | (1 << PD6) | (1 << PD7));
 
+    /* set our pins to output */
     DDRB |= (1 << DDB0);
     DDRD |= (1 << DDD5) | (1 << DDD6) | (1 << DDD7);
 
@@ -84,6 +111,7 @@ int main(void)
     /* enable adc, pre scaler 128 */
     ADCSRA |= (1 << ADEN) | (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
 
+    /* get the current state */
     current_state = FSM[0];
     cnt = current_state.counter;
 
@@ -91,10 +119,12 @@ int main(void)
     current_state.output(current_state.reg, current_state.output_pin);
 
     while (1) {
+        /* state can have a counter so we have a guaranteed time for each state */
         if (cnt > 0) {
             cnt--;
             _delay_ms(10);
         } else {
+            /* read sensor and use the value returned to determine the next state */
             uint8_t sensor = read_sensor();
             if (sensor != 3) {
                 current_state = FSM[current_state.next[sensor]];
@@ -107,7 +137,7 @@ int main(void)
         }
     }
 
-    return 0;
+    return 0; /* will never reach this */
 }
 
 void state_led(avrp_type reg, uint8_t led)
