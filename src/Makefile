@@ -9,7 +9,7 @@ MCU = atmega328p
 FORMAT = ihex
 TARGET = finis
 SRC = $(TARGET).c
-ASRC = ../external/uart.c
+ASRC =
 OPT =
 
 # Name of this Makefile (used for "make depend").
@@ -28,7 +28,7 @@ DEBUG = stabs
 CSTANDARD = -std=c99
 
 # Place -D or -U options here
-CDEFS = -DF_CPU=16000000 -DBAUD=9600 -DPRINTF
+CDEFS = -DF_CPU=16000000 -DBAUD=9600
 
 # Place -I options here
 CINCS =
@@ -77,7 +77,7 @@ MATH_LIB = -lm
 EXTMEMOPTS =
 
 #LDMAP = $(LDFLAGS) -Wl,-Map=$(TARGET).map,--cref
-LDFLAGS = $(EXTMEMOPTS) $(LDMAP) $(PRINTF_LIB_FLOAT) $(SCANF_LIB) $(MATH_LIB)
+LDFLAGS = $(EXTMEMOPTS) $(LDMAP) $(PRINTF_LIB) $(SCANF_LIB) $(MATH_LIB)
 
 
 # Programming support using avrdude. Settings and variables.
