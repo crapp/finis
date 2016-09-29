@@ -147,3 +147,4 @@ ENV/
 ### Custom ###
 
 *.eep
+external/

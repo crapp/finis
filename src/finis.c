@@ -38,10 +38,10 @@
 
 typedef enum LIGHT_STATES {
     GREEN,
-    TO_GREEN,
     RED,
-    TO_RED,
     YELLOW,
+    TO_GREEN,
+    TO_RED,
     TO_YELLOW
 } sts_type;
 typedef enum AVR_PORT { PB, PD } avrp_type;
@@ -54,22 +54,22 @@ typedef struct {
     uint8_t reg;
     void (*output)(avrp_type, uint8_t);
     long counter;
-    sts_type next[6];
+    sts_type next[3];
 } s_type;
 
 /* clang-format off */
 s_type FSM[6] = {
-    {PD5, PD, &state_led, 10,  {GREEN, TO_RED, TO_YELLOW}},
-    {PD6, PD, &state_led, 10,  {TO_GREEN, RED, TO_YELLOW}},
-    {PD7, PD, &state_led, 10,  {TO_GREEN, TO_RED, YELLOW}},
-    {PB0, PB, &state_led, 50,  {GREEN, GREEN, GREEN}},
-    {PB0, PB, &state_led, 150, {RED, RED, RED}},
-    {PB0, PB, &state_led, 250, {YELLOW, YELLOW, YELLOW}}
+    {PD5, PD, &state_led, 100, {GREEN, TO_RED, TO_YELLOW}},
+    {PD6, PD, &state_led, 100, {TO_GREEN, RED, TO_YELLOW}},
+    {PD7, PD, &state_led, 100, {TO_GREEN, TO_RED, YELLOW}},
+    {PB0, PB, &state_led, 200, {GREEN, GREEN, GREEN}},
+    {PB0, PB, &state_led, 300, {RED, RED, RED}},
+    {PB0, PB, &state_led, 400, {YELLOW, YELLOW, YELLOW}}
 };
 /* clang-format on */
 
 s_type current_state;
-long counter;
+long cnt;
 
 int main(void)
 {
@@ -80,27 +80,29 @@ int main(void)
     DDRD |= (1 << DDD5) | (1 << DDD6) | (1 << DDD7);
 
     /* Set reference to avcc */
-    ADMUX |= (1 << REFS1) | (1 << REFS0);
+    ADMUX |= (1 << REFS0);
     /* enable adc, pre scaler 128 */
     ADCSRA |= (1 << ADEN) | (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
 
     current_state = FSM[0];
-    counter = current_state.counter;
+    cnt = current_state.counter;
 
     /* initial state */
     current_state.output(current_state.reg, current_state.output_pin);
 
     while (1) {
-        if (counter > 0) {
-            counter--;
+        if (cnt > 0) {
+            cnt--;
             _delay_ms(10);
         } else {
             uint8_t sensor = read_sensor();
             if (sensor != 3) {
                 current_state = FSM[current_state.next[sensor]];
-                counter = current_state.counter;
+                cnt = current_state.counter;
                 current_state.output(current_state.reg,
                                      current_state.output_pin);
+            } else {
+                cnt = 100;
             }
         }
     }
@@ -129,17 +131,18 @@ uint8_t read_sensor(void)
     while ((ADCSRA & (1 << ADSC))) {
     }
 
-    int16_t adc_value = ADCL;
+    uint16_t adc_value = ADCL;
     adc_value |= ADCH << 8;
 
-    float voltage = adc_value * 4.8828125;
-    if (voltage > 1 && voltage < 2.0) {
+    float voltage = (adc_value * 4.8828125) / 1000.0;
+
+    if (voltage < 1.6) {
         return 0;
     }
-    if (voltage >= 2.0 && voltage < 2.7) {
+    if (voltage >= 1.6 && voltage < 3.2) {
         return 1;
     }
-    if (voltage >= 2.7) {
+    if (voltage >= 3.2) {
         return 2;
     }
     return 3;
