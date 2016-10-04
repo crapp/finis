@@ -4,6 +4,41 @@ Finis is a demonstration of a discrete [Moore](https://en.wikipedia.org/wiki/Moo
 [finite state machine](https://en.wikipedia.org/wiki/Finite-state_machine) running on a
 AVR microcontroller.
 
+## Hardware Layout
+
+For this demonstration I am using a simple layout with an ATmega328P microcontroller
+some LEDs, NPN Transistors and a Photoresistor. The ATmega uses an external
+Crystal with 16 MHz clock rate. Our application shows the brightness detected by
+the photoresistor with different colored LEDs. We need four of them (red, green,
+yellow, blue). I use NPN transistors to drive the LEDs. The following schematic
+should help you to rebuild my layout.
+
+![finis schematic](https://crapp.github.io/finis/finis_schematic.png)
+
+## State Machine
+
+I have written a Table-Driven State Machine in C. This State Machine has 3 main
+states and 3 transitional states. The input is derived from the value read by the ADC.
+Connected to the ADC is a photoresistor. The ambient light conditions are divided in
+three ranges.
+
+Here is the state machine definition table
+
+| State     | Input Bright | Input Dim | Input Dark |
+| --------- | ------------ | --------- | ---------- |
+| GREEN     | GREEN        | TO_RED    | TO_YELLOW  |
+| RED       | TO_GREEN     | RED       | TO_YELLOW  |
+| YELLOW    | TO_GREEN     | TO_RED    | YELLOW     |
+| TO_GREEN  | GREEN        | GREEN     | GREEN      |
+| TO_RED    | RED          | RED       | RED        |
+| TO_YELLOW | YELLOW       | YELLOW    | YELLOW     |
+
+The neat thing about using a table is this can be translated directly into code.
+Have a look at the `struct s_type` and the global arrays FSM in `finis.c`
+
+This implementation currently uses `_delay_ms()` to control the FSM tick frequency.
+Depending on what your application does it might be better to use a Timer register.
+
 ## License
 
 ```

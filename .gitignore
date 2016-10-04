@@ -149,3 +149,4 @@ ENV/
 *.eep
 external/
 .ycm_extra_conf.py
+doc/
